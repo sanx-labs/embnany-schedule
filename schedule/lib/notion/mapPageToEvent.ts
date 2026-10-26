@@ -8,17 +8,33 @@ import {
   getUrl,
 } from "@schedule/lib/notion/extractors";
 import { parseEventDateTimeFromNotion } from "@schedule/utils/eventTimezone";
-import { notionPropertyNames as props } from "@schedule/lib/notion/propertyConfig";
+import { getNotionPropertyNames } from "@schedule/lib/notion/propertyConfig";
+
+type PageProperties = PageObjectResponse["properties"];
+type PropertyValue = PageProperties[string];
+
+function firstPropertyOfType(
+  properties: PageProperties,
+  type: PropertyValue["type"],
+): PropertyValue | undefined {
+  return Object.values(properties).find((property) => property?.type === type);
+}
 
 export function mapNotionPageToEvent(page: PageObjectResponse): ScheduleEvent | null {
   const { properties } = page;
+  const props = getNotionPropertyNames();
 
-  const title = getPlainText(properties[props.title]);
+  const titleProp =
+    properties[props.title] ?? firstPropertyOfType(properties, "title");
+  const title = getPlainText(titleProp);
   const locationField = getRichTextWithLink(properties[props.location]);
   const location = locationField.text || "TBA";
   const locationUrl = locationField.url;
 
-  const dateProp = properties[props.date];
+  const dateProp =
+    properties[props.date]?.type === "date"
+      ? properties[props.date]
+      : firstPropertyOfType(properties, "date");
   const notionStart =
     dateProp?.type === "date" ? dateProp.date?.start : undefined;
   const { date, time, startsAt, eventTimeZone } = parseEventDateTimeFromNotion(

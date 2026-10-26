@@ -36,7 +36,18 @@ export function SchedulePageClient() {
         }
 
         if (!response.ok) {
-          throw new Error(`Schedule API returned ${response.status}`);
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+            detail?: string;
+            code?: string;
+          } | null;
+          const detail = payload?.detail?.trim();
+          const code = payload?.code?.trim();
+          throw new Error(
+            [detail, code ? `(${code})` : ""]
+              .filter(Boolean)
+              .join(" ") || `Schedule API returned ${response.status}`,
+          );
         }
 
         const data = (await response.json()) as { events?: ScheduleEvent[] };
@@ -48,8 +59,12 @@ export function SchedulePageClient() {
         if (!cancelled) {
           setEvents(mockEvents);
           setUsingMockData(true);
+          const reason =
+            fetchError instanceof Error ? fetchError.message : null;
           setError(
-            "Unable to load live schedule. Showing sample data until Notion sync recovers.",
+            reason
+              ? `Unable to load live schedule: ${reason}`
+              : "Unable to load live schedule. Showing sample data until Notion sync recovers.",
           );
         }
       } finally {

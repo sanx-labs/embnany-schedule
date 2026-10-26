@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import {
   getScheduleEventsFromNotion,
   isNotionConfigured,
+  NotionSyncError,
 } from "@schedule/lib/notion/getScheduleEvents";
 
 const noStoreHeaders = {
@@ -24,8 +25,15 @@ export async function GET() {
     return NextResponse.json({ events }, { headers: noStoreHeaders });
   } catch (error) {
     console.error("[API /schedule] Notion fetch failed:", error);
+    const detail =
+      error instanceof Error ? error.message : "Unknown Notion sync error";
+    const code = error instanceof NotionSyncError ? error.code : undefined;
     return NextResponse.json(
-      { error: "Failed to load schedule from Notion" },
+      {
+        error: "Failed to load schedule from Notion",
+        detail,
+        code,
+      },
       { status: 500, headers: noStoreHeaders },
     );
   }
