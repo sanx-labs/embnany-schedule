@@ -10,6 +10,7 @@ import { groupEventsByDate, parseEventDate } from "@schedule/utils/eventDate";
 type ScheduleViewProps = {
   profile: CelebrityProfile;
   events: ScheduleEvent[];
+  loading?: boolean;
 };
 
 function monthKey(date: Date) {
@@ -59,7 +60,7 @@ function sortEventsForMonth(
   return [...upcoming, ...past];
 }
 
-export function ScheduleView({ profile, events }: ScheduleViewProps) {
+export function ScheduleView({ profile, events, loading = false }: ScheduleViewProps) {
   const [currentMonth, setCurrentMonth] = useState(() => {
     const today = new Date();
     return new Date(today.getFullYear(), today.getMonth(), 1);
@@ -120,7 +121,11 @@ export function ScheduleView({ profile, events }: ScheduleViewProps) {
           className="w-full max-w-[630px] space-y-3"
           aria-label="Event schedule"
         >
-          {dayGroups.length > 0 ? (
+          {loading ? (
+            <p className="glass-empty rounded-3xl py-12 text-center text-white/70">
+              Loading schedule from Notion…
+            </p>
+          ) : dayGroups.length > 0 ? (
             dayGroups.map((group) => (
               <EventCard
                 key={group.date}

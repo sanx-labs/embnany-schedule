@@ -14,17 +14,22 @@ const noStoreFetch: RequestInit = {
 };
 
 export function SchedulePageClient() {
-  const [events, setEvents] = useState<ScheduleEvent[]>(mockEvents);
+  const [events, setEvents] = useState<ScheduleEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usingMockData, setUsingMockData] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 25_000);
 
     async function loadSchedule() {
       try {
-        const response = await fetch("/api/schedule", noStoreFetch);
+        const response = await fetch("/api/schedule", {
+          ...noStoreFetch,
+          signal: controller.signal,
+        });
 
         if (cancelled) return;
 
@@ -59,8 +64,13 @@ export function SchedulePageClient() {
         if (!cancelled) {
           setEvents(mockEvents);
           setUsingMockData(true);
-          const reason =
-            fetchError instanceof Error ? fetchError.message : null;
+          const timedOut =
+            fetchError instanceof DOMException && fetchError.name === "AbortError";
+          const reason = timedOut
+            ? "Notion sync timed out"
+            : fetchError instanceof Error
+              ? fetchError.message
+              : null;
           setError(
             reason
               ? `Unable to load live schedule: ${reason}`
@@ -68,6 +78,7 @@ export function SchedulePageClient() {
           );
         }
       } finally {
+        window.clearTimeout(timeoutId);
         if (!cancelled) {
           setLoading(false);
         }
@@ -78,6 +89,8 @@ export function SchedulePageClient() {
 
     return () => {
       cancelled = true;
+      controller.abort();
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -88,11 +101,6 @@ export function SchedulePageClient() {
       <TimezoneSelector />
       <main className="relative flex min-h-dvh flex-col">
         <div className="flex-1">
-          {loading && (
-            <p className="mx-auto mb-4 max-w-lg px-4 text-center text-sm text-white/70">
-              Loading schedule from Notion…
-            </p>
-          )}
           {!loading && error && (
             <p className="mx-auto mb-4 max-w-lg px-4 text-center text-sm text-white/80">
               {error}
@@ -103,7 +111,11 @@ export function SchedulePageClient() {
               Notion is not configured on the server. Showing sample data.
             </p>
           )}
-          <ScheduleView profile={profile} events={events} />
+          <ScheduleView
+            profile={profile}
+            events={events}
+            loading={loading}
+          />
         </div>
       </main>
     </>

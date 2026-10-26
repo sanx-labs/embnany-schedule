@@ -153,6 +153,14 @@ function isQueryablePage(value: unknown): value is PageObjectResponse {
   return page.object === "page" && Boolean(page.properties);
 }
 
+type CachedSchedule = {
+  events: ScheduleEvent[];
+  expiresAt: number;
+};
+
+let scheduleCache: CachedSchedule | null = null;
+const SCHEDULE_CACHE_MS = 60_000;
+
 /**
  * Fetches all rows from the configured Notion database (server-side only).
  * Uses Notion REST: database_id → data_source_id → data source query.
@@ -160,6 +168,10 @@ function isQueryablePage(value: unknown): value is PageObjectResponse {
 export async function getScheduleEventsFromNotion(): Promise<ScheduleEvent[]> {
   if (!isConfigured()) {
     return [];
+  }
+
+  if (scheduleCache && scheduleCache.expiresAt > Date.now()) {
+    return scheduleCache.events;
   }
 
   const databaseId = normalizeNotionId(readEnv("NOTION_DATABASE_ID"));
@@ -226,6 +238,11 @@ export async function getScheduleEventsFromNotion(): Promise<ScheduleEvent[]> {
     const rightKey = right.startsAt ?? right.date;
     return leftKey.localeCompare(rightKey);
   });
+
+  scheduleCache = {
+    events,
+    expiresAt: Date.now() + SCHEDULE_CACHE_MS,
+  };
 
   return events;
 }

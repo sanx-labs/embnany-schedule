@@ -12,6 +12,10 @@ const noStoreHeaders = {
   "Cache-Control": "no-store, no-cache, must-revalidate",
 };
 
+const liveHeaders = {
+  "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+};
+
 export async function GET() {
   if (!isNotionConfigured()) {
     return NextResponse.json(
@@ -22,7 +26,7 @@ export async function GET() {
 
   try {
     const events = await getScheduleEventsFromNotion();
-    return NextResponse.json({ events }, { headers: noStoreHeaders });
+    return NextResponse.json({ events }, { headers: liveHeaders });
   } catch (error) {
     console.error("[API /schedule] Notion fetch failed:", error);
     const detail =
